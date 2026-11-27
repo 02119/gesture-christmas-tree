@@ -1,0 +1,28 @@
+{
+  "photos": [
+    {
+      "name": "demo_01.jpg",
+      "url": "photos/demo_01.jpg"
+    },
+    {
+      "name": "demo_02.jpg",
+      "url": "photos/demo_02.jpg"
+    },
+    {
+      "name": "demo_03.jpg",
+      "url": "photos/demo_03.jpg"
+    },
+    {
+      "name": "demo_04.jpg",
+      "url": "photos/demo_04.jpg"
+    },
+    {
+      "name": "demo_05.jpg",
+      "url": "photos/demo_05.jpg"
+    },
+    {
+      "name": "demo_06.jpg",
+      "url": "photos/demo_06.jpg"
+    }
+  ]
+}

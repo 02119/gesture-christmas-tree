@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#04060d" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="用手机前置摄像头比手势，点亮一棵可以散开、聚合、翻照片的圣诞树。" />
+  <title>手势圣诞树 · Gesture Christmas Tree</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%84%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./mobile.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three.module.js",
+        "three/addons/": "./vendor/jsm/"
+      }
+    }
+  </script>
+</head>
+<body class="intro-active">
+  <canvas id="scene"></canvas>
+  <div class="vignette"></div>
+
+  <header class="hud top">
+    <div class="brand">
+      <span class="dot-live" id="live-dot"></span>
+      <span class="brand-title">手势圣诞树</span>
+      <span class="brand-sub">GESTURE TREE</span>
+    </div>
+    <div class="status">
+      <span id="status-text">等待开启摄像头</span>
+      <span class="sep">·</span>
+      <span id="fps-text">-- fps</span>
+    </div>
+  </header>
+
+  <aside class="cam-panel" id="cam-panel">
+    <canvas id="cam" width="480" height="360"></canvas>
+    <div class="cam-bar">
+      <span id="gesture-name">未检测到手</span>
+      <span id="hand-count"></span>
+    </div>
+  </aside>
+
+  <div class="hints" id="hints">
+    <div class="hint-row"><b>🖐</b> 张开手掌<span>树散成星云</span></div>
+    <div class="hint-row"><b>✊</b> 握拳<span>聚合成树</span></div>
+    <div class="hint-row"><b>👌</b> OK<span>打开 / 收起照片</span></div>
+    <div class="hint-row"><b>✌️</b> 剪刀手<span>下一张照片</span></div>
+    <div class="hint-row"><b>↔</b> 双手开合<span>缩放照片</span></div>
+    <div class="hint-row dim"><b>👆</b> 拖动屏幕<span>也能转动树</span></div>
+  </div>
+
+  <section class="intro" id="intro">
+    <div class="intro-steps" id="intro-steps"></div>
+    <h2 class="intro-title" id="intro-title">把手举到镜头前</h2>
+    <p class="intro-sub" id="intro-sub">整只手放进右上角的小窗</p>
+    <div class="intro-bar"><span id="intro-fill"></span></div>
+    <button class="intro-skip" id="intro-skip" type="button">跳过引导 →</button>
+  </section>
+
+  <div class="photo-name" id="photo-name"></div>
+  <div class="toast" id="toast"></div>
+
+  <div class="loading" id="loading">
+    <div class="loading-tree">🎄</div>
+    <div>正在点亮…</div>
+  </div>
+
+  <section class="start" id="start">
+    <div class="start-glow"></div>
+    <div class="start-tree">🎄</div>
+    <h1>手势圣诞树</h1>
+    <p>用前置摄像头比手势：张开手掌把树吹散，握拳聚回去，OK 手势翻看挂在树上的照片。</p>
+    <button class="start-btn" id="start-btn" type="button">开启摄像头</button>
+    <button class="start-skip" id="start-skip" type="button">先不用摄像头，用鼠标 / 手指玩</button>
+    <span class="start-note" id="start-note">第一次需要允许摄像头权限</span>
+  </section>
+
+  <script src="./platform.js"></script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

@@ -1,0 +1,300 @@
+/* 手机 / 触屏布局：叠加在 style.css 之上 */
+
+html,
+body {
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#scene {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  touch-action: none;
+}
+
+/* ---------------------------------------------------------------- 启动面板 */
+.start {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 34px 26px calc(34px + env(safe-area-inset-bottom));
+  text-align: center;
+  background: radial-gradient(120% 90% at 50% 34%, rgba(38, 54, 98, 0.55), rgba(4, 6, 13, 0.96) 64%);
+  backdrop-filter: blur(7px);
+  transition: opacity 0.6s ease, visibility 0.6s ease;
+}
+
+.start.hide {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.start-glow {
+  position: absolute;
+  width: 340px;
+  height: 340px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245, 200, 119, 0.16), transparent 66%);
+  filter: blur(12px);
+  pointer-events: none;
+}
+
+.start-tree {
+  font-size: 58px;
+  line-height: 1;
+  filter: drop-shadow(0 0 22px rgba(245, 200, 119, 0.5));
+  animation: start-bob 4s ease-in-out infinite;
+}
+
+@keyframes start-bob {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-6px) scale(1.03); }
+}
+
+.start h1 {
+  margin: 4px 0 0;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: #f8ecd6;
+  text-shadow: 0 0 30px rgba(245, 200, 119, 0.32);
+}
+
+.start p {
+  margin: 0;
+  max-width: 30em;
+  font-size: 13px;
+  line-height: 1.75;
+  color: rgba(239, 231, 216, 0.6);
+}
+
+.start-btn {
+  margin-top: 10px;
+  min-width: 190px;
+  padding: 13px 30px;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: #241708;
+  background: linear-gradient(120deg, #f0c271, #ffe6b8 55%, #e7a94d);
+  box-shadow: 0 10px 34px rgba(245, 200, 119, 0.32), 0 0 0 1px rgba(255, 255, 255, 0.28) inset;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.3s ease, opacity 0.2s ease;
+}
+
+.start-btn:active {
+  transform: scale(0.97);
+}
+
+.start-btn:disabled {
+  opacity: 0.62;
+  cursor: default;
+}
+
+.start.busy .start-btn {
+  animation: start-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes start-pulse {
+  0%, 100% { box-shadow: 0 10px 34px rgba(245, 200, 119, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.28) inset; }
+  50% { box-shadow: 0 10px 44px rgba(245, 200, 119, 0.62), 0 0 0 1px rgba(255, 255, 255, 0.4) inset; }
+}
+
+.start-skip {
+  margin-top: 2px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  color: rgba(239, 231, 216, 0.4);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: rgba(239, 231, 216, 0.18);
+  cursor: pointer;
+}
+
+.start-note {
+  min-height: 1.4em;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: rgba(239, 231, 216, 0.34);
+}
+
+/* ---------------------------------------------------------------- 竖屏 / 窄屏 */
+@media (max-width: 820px), (pointer: coarse) {
+  .hud.top {
+    padding: calc(12px + env(safe-area-inset-top)) 14px 10px;
+    align-items: flex-start;
+  }
+
+  .brand {
+    gap: 8px;
+  }
+
+  .brand-title {
+    font-size: 15px;
+    letter-spacing: 0.12em;
+  }
+
+  .brand-sub {
+    display: none;
+  }
+
+  .status {
+    margin-top: 2px;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-align: right;
+  }
+
+  .cam-panel {
+    top: calc(64px + env(safe-area-inset-top));
+    right: 10px;
+    bottom: auto;
+    width: 118px;
+    border-radius: 12px;
+  }
+
+  .cam-bar {
+    padding: 5px 7px;
+    font-size: 9px;
+    letter-spacing: 0.03em;
+  }
+
+  .hints {
+    left: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    gap: 4px;
+    padding: 9px 12px;
+    font-size: 10px;
+    border-radius: 12px;
+  }
+
+  .hint-row {
+    gap: 6px;
+    letter-spacing: 0.02em;
+  }
+
+  .hint-row b {
+    font-size: 12px;
+  }
+
+  .hint-row span {
+    display: none;
+  }
+
+  .intro {
+    left: 10px;
+    right: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    width: auto;
+    padding: 16px 18px 13px;
+    border-radius: 16px;
+  }
+
+  .intro-title {
+    font-size: 19px;
+  }
+
+  .intro-sub {
+    margin-top: 5px;
+    font-size: 12px;
+  }
+
+  .intro-bar {
+    margin-top: 13px;
+  }
+
+  .intro-skip {
+    margin-top: 11px;
+    font-size: 11px;
+  }
+
+  .photo-name {
+    bottom: calc(22px + env(safe-area-inset-bottom));
+    font-size: 12px;
+  }
+}
+
+/* ---------------------------------------------------------------- 手机横屏 */
+@media (max-height: 470px) {
+  .hud.top {
+    padding: 8px 14px;
+  }
+
+  .cam-panel {
+    top: 44px;
+    width: 96px;
+  }
+
+  .hints {
+    display: none;
+  }
+
+  .intro {
+    left: 12px;
+    right: auto;
+    bottom: 12px;
+    width: min(330px, 58vw);
+    padding: 12px 14px 10px;
+  }
+
+  .intro-title {
+    font-size: 16px;
+  }
+
+  .intro-sub {
+    font-size: 11px;
+  }
+
+  .intro-bar {
+    margin-top: 9px;
+  }
+
+  .intro-skip {
+    margin-top: 7px;
+  }
+
+  .start {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    padding: 18px;
+  }
+
+  .start-tree {
+    font-size: 40px;
+  }
+
+  .start h1 {
+    font-size: 20px;
+  }
+
+  .start p {
+    max-width: 40em;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .start-btn {
+    padding: 10px 22px;
+    font-size: 13px;
+  }
+
+  .start-note,
+  .start-skip {
+    width: 100%;
+  }
+}
