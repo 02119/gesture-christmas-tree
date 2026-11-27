@@ -12,9 +12,37 @@
 window.TREE_PHOTO_LIST_URL = 'photos.json';
 
 (() => {
-  const MODEL_URL = './mediapipe/hand_landmarker.task';
-  const WASM_URL = './mediapipe/wasm';
+  const MP_VERSION = '1.2.3';
   const BUNDLE_URL = './mediapipe/vision_bundle.mjs';
+
+  // 识别模型优先走 jsDelivr 的 Fastly 线路：国内通常比 GitHub Pages 快一个数量级，
+  // 失败再依次退回 cdn.jsdelivr.net 和打包在站点里的本地文件。
+  // 部署到 GitHub Pages 时用当前仓库名拼 CDN 地址，fork 出去也能自动生效。
+  const DEFAULT_REPO = '02119/gesture-christmas-tree';
+
+  function cdnModelUrls() {
+    const gh = location.hostname.match(/^([a-z0-9-]+)\.github\.io$/i);
+    const repo = location.pathname.split('/').filter(Boolean)[0];
+    const slug = gh && repo ? `${gh[1]}/${repo}` : DEFAULT_REPO;
+    return [
+      `https://fastly.jsdelivr.net/gh/${slug}@main/mediapipe/hand_landmarker.task`,
+      `https://cdn.jsdelivr.net/gh/${slug}@main/mediapipe/hand_landmarker.task`,
+    ];
+  }
+
+  const WASM_URLS = [
+    `https://fastly.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}/wasm`,
+    `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}/wasm`,
+    './mediapipe/wasm',
+  ];
+  const MODEL_CACHE = 'tree-hand-model-1';
+
+  // ?local：完全不用 CDN，适合离线 / jsDelivr 被墙的网络
+  const forceLocal = new URLSearchParams(location.search).has('local');
+  const MODEL_SOURCES = forceLocal
+    ? ['./mediapipe/hand_landmarker.task']
+    : [...new Set([...cdnModelUrls(), './mediapipe/hand_landmarker.task'])];
+  const WASM_SOURCES = forceLocal ? ['./mediapipe/wasm'] : WASM_URLS;
 
   /* ------------------------------------------------------------ 几何 / 手势 */
   const WRIST = 0;
@@ -145,8 +173,6 @@ window.TREE_PHOTO_LIST_URL = 'photos.json';
   let delegateUsed = '';
   let errorText = '';
 
-  const isCoarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
-
   function fail(text) {
     errorText = text;
     const note = document.getElementById('start-note');
@@ -200,11 +226,98 @@ window.TREE_PHOTO_LIST_URL = 'photos.json';
   }
 
   /* ------------------------------------------------------------ 模型 */
-  async function createLandmarker(delegate) {
+  function setStage(text, ratio) {
+    const note = document.getElementById('start-note');
+    const box = document.getElementById('start-progress');
+    const bar = document.getElementById('start-bar');
+    if (note) note.textContent = text;
+    if (!box || !bar) return;
+    box.classList.add('on');
+    if (ratio == null) {
+      box.classList.add('indeterminate');
+      bar.style.width = '';
+    } else {
+      box.classList.remove('indeterminate');
+      bar.style.width = `${Math.round(Math.max(0, Math.min(1, ratio)) * 100)}%`;
+    }
+  }
+
+  async function readBlob(res, onProgress) {
+    const total = Number(res.headers.get('content-length')) || 0;
+    if (!res.body) {
+      const blob = await res.blob();
+      onProgress?.(blob.size, blob.size || 1);
+      return blob;
+    }
+    const reader = res.body.getReader();
+    const chunks = [];
+    let received = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      onProgress?.(received, total);
+    }
+    return new Blob(chunks, { type: 'application/octet-stream' });
+  }
+
+  async function fetchModel() {
+    // 第二次打开：Cache API 里直接取，不再走网络
+    try {
+      const cache = await caches.open(MODEL_CACHE);
+      const hit = await cache.match('hand_landmarker');
+      if (hit) {
+        setStage('识别模型已缓存，正在初始化…');
+        return await hit.blob();
+      }
+    } catch { /* 无痕模式等不支持 Cache API */ }
+
+    let lastErr = null;
+    for (const url of MODEL_SOURCES) {
+      try {
+        const res = await fetch(url, { mode: 'cors' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await readBlob(res, (got, total) => {
+          const mb = (got / 1048576).toFixed(1);
+          const ratio = total ? got / total : 0;
+          const label = total ? `${mb}/${(total / 1048576).toFixed(1)}MB` : `${mb}MB`;
+          setStage(`正在下载识别模型 ${label}`, ratio);
+        });
+        if (blob.size < 1_000_000) throw new Error('下载到的模型不完整');
+        try {
+          const cache = await caches.open(MODEL_CACHE);
+          await cache.put(
+            'hand_landmarker',
+            new Response(blob, { headers: { 'Content-Type': 'application/octet-stream' } }),
+          );
+        } catch { /* 缓存失败不影响使用 */ }
+        setStage('识别模型就绪');
+        return blob;
+      } catch (err) {
+        lastErr = err;
+        console.warn('模型源失败，换下一个', url, err);
+      }
+    }
+    throw lastErr || new Error('识别模型下载失败');
+  }
+
+  let modelPromise = null;
+
+  function prepareModel(force = false) {
+    if (modelPromise && !force) return modelPromise;
+    modelPromise = fetchModel().catch((err) => {
+      modelPromise = null;      // 允许点「重试」时重新下载
+      throw err;
+    });
+    return modelPromise;
+  }
+
+  async function createLandmarker(delegate, wasmBase, modelUrl) {
     const { FilesetResolver, HandLandmarker } = await import(BUNDLE_URL);
-    const fileset = await FilesetResolver.forVisionTasks(WASM_URL);
+    const fileset = await FilesetResolver.forVisionTasks(wasmBase);
     return HandLandmarker.createFromOptions(fileset, {
-      baseOptions: { modelAssetPath: MODEL_URL, delegate },
+      baseOptions: { modelAssetPath: modelUrl, delegate },
       runningMode: 'VIDEO',
       numHands: 2,
       minHandDetectionConfidence: 0.6,
@@ -213,22 +326,30 @@ window.TREE_PHOTO_LIST_URL = 'photos.json';
     });
   }
 
-  async function loadModel() {
+  async function loadModel(modelBlob) {
     if (landmarker) return;
+    // 模型先落到 Blob URL：只下载一次，也方便进度条统计
+    const modelUrl = URL.createObjectURL(modelBlob);
     // 默认用 CPU：部分手机 / WebView 的 GPU delegate 会静默返回 0 只手，
     // CPU（XNNPACK）在 640×480 下足够快，也更省电稳定。
     const wantGpu = new URLSearchParams(location.search).has('gpu');
-    if (wantGpu) {
-      try {
-        landmarker = await createLandmarker('GPU');
-        delegateUsed = 'GPU';
-        return;
-      } catch (err) {
-        console.warn('GPU 推理不可用，改用 CPU', err);
+    const delegates = wantGpu ? ['GPU', 'CPU'] : ['CPU'];
+
+    let lastErr = null;
+    for (const base of WASM_SOURCES) {
+      for (const delegate of delegates) {
+        try {
+          setStage('正在初始化识别模型…', null);
+          landmarker = await createLandmarker(delegate, base, modelUrl);
+          delegateUsed = `${delegate}${base.includes('jsdelivr') ? '+CDN' : ''}`;
+          return;
+        } catch (err) {
+          lastErr = err;
+          console.warn(`初始化失败（${delegate} / ${base}）`, err);
+        }
       }
     }
-    landmarker = await createLandmarker('CPU');
-    delegateUsed = 'CPU';
+    throw lastErr || new Error('识别模型初始化失败');
   }
 
   /* ------------------------------------------------------------ 预览绘制 */
@@ -339,11 +460,13 @@ window.TREE_PHOTO_LIST_URL = 'photos.json';
           : '手机浏览器只在 https 页面里给摄像头权限，请用部署后的链接打开');
       }
 
+      // 模型下载（页面打开时可能已经预取完）和摄像头授权并行进行
+      const modelReady = prepareModel();
       await openCamera();
-      const note = document.getElementById('start-note');
-      if (note) note.textContent = '正在加载识别模型（首次约 20MB）…';
-      await loadModel();
+      const blob = await modelReady;
+      await loadModel(blob);
 
+      setStage('识别已就绪', 1);
       document.body.classList.add('started');
       document.getElementById('start')?.classList.add('hide');
       running = true;
@@ -357,7 +480,9 @@ window.TREE_PHOTO_LIST_URL = 'photos.json';
         ? '摄像头被拒绝了：在浏览器地址栏的权限里允许后再试'
         : err?.name === 'NotFoundError'
           ? '没找到摄像头'
-          : (err?.message || '摄像头启动失败');
+          : /模型|模型下载|初始化/.test(err?.message || '')
+            ? '识别模型没加载成功，检查网络后点「重试」'
+            : (err?.message || '摄像头启动失败');
       fail(msg);
       if (btn) { btn.disabled = false; }
     }
@@ -392,16 +517,29 @@ window.TREE_PHOTO_LIST_URL = 'photos.json';
       setTimeout(() => start.remove(), 600);
     });
 
-    // 已经有权限时直接进入，省一次点击（iOS 仍然需要手势，所以失败就算了）
-    if (isCoarse) return;
+    // 页面一打开就先下载 7.8MB 模型：等用户点按钮时通常已经好了。
+    // 开了省流量 / 2G 网络就不自动下，点按钮时再下。
+    const conn = navigator.connection || {};
+    const slow = conn.saveData || /(^|-)2g/.test(conn.effectiveType || '');
+    if (!slow) {
+      setStage('正在准备识别模型…', 0);
+      prepareModel()
+        .then(() => {
+          if (!starting && !running) setStage('识别模型已就绪，点上方按钮开始', 1);
+        })
+        .catch(() => {
+          if (!starting && !running) setStage('模型下载失败，点「开启摄像头」重试', 0);
+        });
+    }
   }
 
   window.TREE_PLATFORM = {
     mobile: true,
     startVision,
     startPreview,
-    // 调试：__treePlatform.state() / __treePlatform.gestures.analyze(lm)
+    // 调试：__treePlatform.state() / __treePlatform.gestures.analyze(lm) / preload()
     gestures: { analyze, handFeatures, classify },
+    preload: () => prepareModel(),
     state: () => ({ running, fps, seq, stable, hands: lastHands.length, detectMs, delegate: delegateUsed, error: errorText }),
   };
 

@@ -8,6 +8,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="description" content="用手机前置摄像头比手势，点亮一棵可以散开、聚合、翻照片的圣诞树。" />
   <title>手势圣诞树 · Gesture Christmas Tree</title>
+  <link rel="preconnect" href="https://fastly.jsdelivr.net" crossorigin />
+  <link rel="dns-prefetch" href="https://fastly.jsdelivr.net" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%84%3C/text%3E%3C/svg%3E" />
   <link rel="stylesheet" href="./style.css" />
   <link rel="stylesheet" href="./mobile.css" />
@@ -77,7 +79,8 @@
     <p>用前置摄像头比手势：张开手掌把树吹散，握拳聚回去，OK 手势翻看挂在树上的照片。</p>
     <button class="start-btn" id="start-btn" type="button">开启摄像头</button>
     <button class="start-skip" id="start-skip" type="button">先不用摄像头，用鼠标 / 手指玩</button>
-    <span class="start-note" id="start-note">第一次需要允许摄像头权限</span>
+    <div class="start-progress" id="start-progress"><span id="start-bar"></span></div>
+    <span class="start-note" id="start-note">首次加载约 12MB，之后会使用缓存</span>
   </section>
 
   <script src="./platform.js"></script>
